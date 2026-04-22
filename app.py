@@ -16,7 +16,7 @@ from faraid_engine import calculate_shares
 from dispute_detector import detect_disputes
 from tax_engine import calculate_heir_tax
 from legal_doc_generator import generate_inheritance_certificate_pdf, generate_legal_notice, generate_fir_draft
-from process_navigator import get_succession_process
+from core.process_navigator import get_succession_process
 from gemini_nlp import parse_scenario
 
 st.set_page_config(page_title="WarisNama AI", page_icon="⚖️", layout="wide")
