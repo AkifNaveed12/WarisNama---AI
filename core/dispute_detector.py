@@ -16,7 +16,7 @@ Production-grade dispute detection system.
 
 from typing import Dict, Any, List
 
-from knowledge_base import (
+from core.knowledge_base import (
     detect_disputes,
     get_fraud_severity_label,
     DocumentType

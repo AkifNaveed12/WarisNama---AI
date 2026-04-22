@@ -4,7 +4,7 @@
 from fractions import Fraction
 from typing import Dict, Any, List
 
-from knowledge_base import (
+from core.knowledge_base import (
     HANAFI_FIXED_SHARES,
     HANAFI_MAHJUB,
     apply_awl,

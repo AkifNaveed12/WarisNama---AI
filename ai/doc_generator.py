@@ -18,7 +18,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 
-from knowledge_base import (
+from core.knowledge_base import (
     INHERITANCE_CERTIFICATE_TEMPLATE,
     LEGAL_NOTICE_TEMPLATE_EN,
     LEGAL_NOTICE_TEMPLATE_URDU,

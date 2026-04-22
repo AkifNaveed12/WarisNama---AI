@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.express as px
 
 # CORE MODULES (FIXED IMPORTS)
+
 from faraid_engine import calculate_shares
 from dispute_detector import detect_inheritance_disputes
 from tax_engine import calculate_all_heirs_tax

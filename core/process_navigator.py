@@ -16,7 +16,7 @@ Process orchestration engine.
 
 from typing import Dict, Any, List
 
-from knowledge_base import get_process_steps
+from core.knowledge_base import get_process_steps
 
 
 # ─────────────────────────────────────────────

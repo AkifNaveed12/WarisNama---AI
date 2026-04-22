@@ -229,14 +229,14 @@ HANAFI_MAHJUB: Dict[str, List[str]] = {
     "uterine_sister":         ["son", "grandson", "father", "paternal_grandfather", "mother"],
     "consanguine_brother":    ["son", "grandson", "father", "paternal_grandfather", "full_brother"],
     "son_of_full_brother":    ["son", "grandson", "father", "paternal_grandfather",
-                               "full_brother", "consanguine_brother"],
+                                "full_brother", "consanguine_brother"],
     "paternal_uncle":         ["son", "grandson", "father", "paternal_grandfather",
-                               "full_brother", "consanguine_brother",
-                               "son_of_full_brother", "son_of_consanguine_brother"],
+                                "full_brother", "consanguine_brother",
+                                "son_of_full_brother", "son_of_consanguine_brother"],
     "son_of_paternal_uncle":  ["son", "grandson", "father", "paternal_grandfather",
-                               "full_brother", "consanguine_brother",
-                               "son_of_full_brother", "son_of_consanguine_brother",
-                               "paternal_uncle"],
+                                "full_brother", "consanguine_brother",
+                                "son_of_full_brother", "son_of_consanguine_brother",
+                                "paternal_uncle"],
 }
 
 

@@ -12,13 +12,16 @@ import json
 import os
 from datetime import datetime
 
-from faraid_engine import calculate_shares
-from dispute_detector import detect_disputes
-from tax_engine import calculate_heir_tax
-from legal_doc_generator import generate_inheritance_certificate_pdf, generate_legal_notice, generate_fir_draft
+from core.faraid_engine import calculate_shares
+from core.dispute_detector import detect_inheritance_disputes
+from core.tax_engine import calculate_all_heirs_tax
+from ai.doc_generator import (
+    generate_inheritance_certificate_pdf,
+    generate_legal_notice,
+    generate_fir_draft
+)
 from core.process_navigator import get_succession_process
-from gemini_nlp import parse_scenario
-
+from ai.nlp_parser import parse_scenario
 st.set_page_config(page_title="WarisNama AI", page_icon="⚖️", layout="wide")
 
 st.markdown("""
@@ -50,7 +53,7 @@ input_method = st.sidebar.radio("Input method", ["Form", "Natural Language (Urdu
 
 if input_method == "Natural Language (Urdu/English)":
     user_input = st.sidebar.text_area("Describe the situation:", height=150,
-                                      placeholder="میرے والد کا انتقال ہوگیا۔ 2 بیٹے، 3 بیٹیاں، ایک بیوی۔ گھر 80 لاکھ کا ہے۔")
+                                        placeholder="میرے والد کا انتقال ہوگیا۔ 2 بیٹے، 3 بیٹیاں، ایک بیوی۔ گھر 80 لاکھ کا ہے۔")
     if st.sidebar.button("Parse Scenario"):
         with st.spinner("Analyzing..."):
             try:
@@ -113,10 +116,10 @@ if input_method == "Form" and submitted:
     # Build heirs dict based on sect
     if sect == "hanafi":
         heirs = {'sons': sons, 'daughters': daughters, 'wife': wives,
-                 'husband': husband, 'mother': mother, 'father': father}
+                'husband': husband, 'mother': mother, 'father': father}
     elif sect == "shia":
         heirs = {'sons': sons, 'daughters': daughters, 'wife': wives,
-                 'husband': husband, 'mother': mother, 'father': father}
+                'husband': husband, 'mother': mother, 'father': father}
     elif sect == "christian":
         heirs = {'spouse': spouse_christian, 'children': children_christian}
     else:  # hindu

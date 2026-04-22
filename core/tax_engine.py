@@ -14,7 +14,7 @@ All tax calculations MUST come from knowledge_base to ensure:
 
 from typing import Dict, Any
 
-from knowledge_base import (
+from core.knowledge_base import (
     calculate_full_tax_summary,
     FilerStatus,
     Province
