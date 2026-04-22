@@ -718,6 +718,24 @@ DISPUTE_PATTERNS: Dict[str, Dict[str, Any]] = {
         "urdu_action": "پہلے ضلع عدالت سے سرپرست مقرر کرائیں",
     },
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
     # ── Pattern 7: Buy-Out Negotiation ───────────────────────────────────────
     # One heir wants to keep property; others want their share in cash.
     DisputePattern.BUYOUT_NEGOTIATION: {
