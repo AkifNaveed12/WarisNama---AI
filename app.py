@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import io
 
 from core.faraid_engine import calculate_shares
 from core.dispute_detector import detect_inheritance_disputes
@@ -21,6 +22,16 @@ from ai.doc_generator import (
 from core.process_navigator import get_succession_process
 from ai.nlp_parser import parse_scenario
 from core.knowledge_base import Province, FilerStatus
+
+# NEW: Import PDF generators from docs (using your working pdf_builder)
+from docs.pdf_builder import (
+    generate_share_certificate_pdf,
+    create_certificate_data_from_shares,
+    generate_legal_notice_pdf,
+    generate_fir_pdf
+)
+from docs.templates.legal_notice import get_legal_notice_data
+from docs.templates.fir_draft import get_fir_data
 
 st.set_page_config(page_title="WarisNama AI", page_icon="⚖️", layout="wide")
 
@@ -572,81 +583,89 @@ if submitted:
     st.divider()
     
     # ============================================================
-    # SECTION 6: DOCUMENT GENERATION
+    # SECTION 6: DOCUMENT GENERATION (FIXED – NO NESTED BUTTONS)
     # ============================================================
     st.subheader("📄 Legal Documents")
     
     col_doc1, col_doc2, col_doc3 = st.columns(3)
     
+    # --- Share Certificate (PDF) – Direct download button, no extra button ---
     with col_doc1:
-        if st.button("📑 Generate Share Certificate (PDF)", use_container_width=True):
-            try:
-                pdf_bytes = generate_inheritance_certificate_pdf(
-                    deceased_name="Late Person",
-                    death_date=datetime.now().strftime("%Y-%m-%d"),
-                    sect=sect,
-                    total_estate=total_estate,
-                    debts=debts,
-                    funeral=funeral,
-                    wasiyyat=wasiyyat,
-                    shares=shares
-                )
-                st.download_button(
-                    "⬇️ Download PDF", 
-                    data=pdf_bytes, 
-                    file_name="inheritance_certificate.pdf", 
-                    mime="application/pdf",
-                    use_container_width=True,
-                    key="pdf_download"
-                )
-            except Exception as e:
-                st.error(f"Error generating PDF: {e}")
+        # Prepare certificate data and PDF buffer once
+        first_heir = list(shares.keys())[0] if shares else None
+        if first_heir:
+            cert_data = create_certificate_data_from_shares(
+                deceased_name="Late Person",
+                deceased_father="[Father's Name]",
+                death_date=datetime.now().strftime("%Y-%m-%d"),
+                sect=sect,
+                total_estate=distributable_estate,
+                shares=shares,
+                heir_name=first_heir,
+                heir_cnic="XXXXX-XXXXXXX-X",
+                heir_father="[Father's Name]",
+                heir_relationship=first_heir.replace('_', ' ').title(),
+                property_description="Inherited Property"
+            )
+            cert_buffer = io.BytesIO()
+            generate_share_certificate_pdf(cert_data, buffer=cert_buffer)
+            st.download_button(
+                "📑 Download Share Certificate",
+                data=cert_buffer.getvalue(),
+                file_name="share_certificate.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            st.warning("No heirs found to generate certificate.")
     
+    # --- Legal Notice (PDF) – Only show if dispute detected ---
     with col_doc2:
         if disputes.get('total_patterns_detected', 0) > 0:
             top_dispute = disputes.get('disputes', [{}])[0]
-            if st.button("📋 Generate Legal Notice", use_container_width=True):
-                notice_text = generate_legal_notice(
-                    sender_name="User",
-                    sender_address="Your Address",
-                    sender_cnic="XXXXX-XXXXXXX-X",
-                    recipient_name="Opposing Heir",
-                    recipient_address="Their Address",
-                    deceased_name="Late Person",
-                    death_date=datetime.now().strftime("%Y-%m-%d"),
-                    sect=sect,
-                    sender_share_fraction="1/8",
-                    sender_share_amount=100000,
-                    fraud_description=top_dispute.get('pattern', 'fraud'),
-                    law_sections_list=str(top_dispute.get('law_sections', {})),
-                    remedy=top_dispute.get('remedy', 'Legal action'),
-                    language='en'
-                )
-                st.text_area("Legal Notice Preview", notice_text, height=150)
-                st.download_button("⬇️ Download Notice", data=notice_text, file_name="legal_notice.txt", key="notice_download")
+            notice_data = get_legal_notice_data()
+            notice_data.update({
+                "noticee_name": "Opposing Heir",
+                "client_name": "User",
+                "grievance_paras": [
+                    f"The opposing heir has committed {top_dispute.get('pattern', 'fraud')}.",
+                    f"This violates {top_dispute.get('law_sections', 'law')}."
+                ],
+                "relief_demanded": [top_dispute.get('remedy', 'Legal action')],
+                "subject": f"Legal Notice Regarding {top_dispute.get('pattern', 'Dispute')}"
+            })
+            notice_buffer = io.BytesIO()
+            generate_legal_notice_pdf(notice_data, buffer=notice_buffer)
+            st.download_button(
+                "⚖️ Download Legal Notice",
+                data=notice_buffer.getvalue(),
+                file_name="legal_notice.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            st.info("No dispute detected. Legal notice not required.")
     
+    # --- FIR Draft (PDF) – Only show if dispute detected ---
     with col_doc3:
         if disputes.get('total_patterns_detected', 0) > 0:
-            top_dispute = disputes.get('disputes', [{}])[0]
-            if top_dispute.get('pattern') == 'fraudulent_mutation':
-                if st.button("🚨 Generate FIR Draft", use_container_width=True):
-                    fir = generate_fir_draft(
-                        complainant_name="User",
-                        complainant_cnic="XXXXX-XXXXXXX-X",
-                        complainant_address="Your Address",
-                        complainant_father_name="Father Name",
-                        deceased_name="Late Person",
-                        death_date=datetime.now().strftime("%Y-%m-%d"),
-                        heirs_list="List of heirs",
-                        accused_name="Opposing Heir",
-                        accused_address="Their Address",
-                        crime_description="Fraudulent mutation of property",
-                        evidence_list="Succession certificate missing",
-                        police_station_name="Local Police Station",
-                        police_station_address="Station Address",
-                        ppc_sections="498A"
-                    )
-                    st.text_area("FIR Draft (Urdu)", fir, height=150)
+            fir_data = get_fir_data()
+            fir_data.update({
+                "accused_name": "Opposing Heir",
+                "fir_narrative": f"The accused has committed {disputes.get('disputes', [{}])[0].get('pattern', 'fraud')} in violation of inheritance laws.",
+                "offence_sections": "PPC 498A, Succession Act 1925"
+            })
+            fir_buffer = io.BytesIO()
+            generate_fir_pdf(fir_data, buffer=fir_buffer)
+            st.download_button(
+                "🚨 Download FIR Draft",
+                data=fir_buffer.getvalue(),
+                file_name="fir_draft.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            st.info("No dispute detected. FIR not required.")
     
     st.divider()
     

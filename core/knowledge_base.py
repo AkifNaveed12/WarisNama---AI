@@ -813,6 +813,91 @@ DISPUTE_PATTERNS: Dict[str, Dict[str, Any]] = {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECTION 6.5 — LEGAL REFERENCES (for display to users)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+REFERENCES: Dict[str, str] = {
+    # Hanafi references
+    "hanafi_wife_with_children": "📖 Mulla's Mohammedan Law, Chapter V, Section 272: Wife gets 1/8 if deceased has children (or grandchildren). Source: pakistancode.gov.pk",
+    "hanafi_wife_no_children": "📖 Mulla's Mohammedan Law, Section 273: Wife gets 1/4 if no children.",
+    "hanafi_husband_with_children": "📖 Mulla's Mohammedan Law, Section 274: Husband gets 1/4 if children exist.",
+    "hanafi_husband_no_children": "📖 Mulla's Mohammedan Law, Section 275: Husband gets 1/2 if no children.",
+    "hanafi_mother_with_children": "📖 Mulla's Mohammedan Law, Section 276: Mother gets 1/6 if children or 2+ siblings exist.",
+    "hanafi_mother_no_children_no_siblings": "📖 Mulla's Mohammedan Law, Section 277: Mother gets 1/3 if no children and no siblings.",
+    "hanafi_father_minimum": "📖 Mulla's Mohammedan Law, Section 278: Father gets minimum 1/6 then residue (Asaba).",
+    "hanafi_daughter_sole": "📖 Mulla's Mohammedan Law, Section 279: Single daughter gets 1/2 if no son.",
+    "hanafi_daughters_multiple": "📖 Mulla's Mohammedan Law, Section 280: Two or more daughters get 2/3 collectively if no son.",
+    "hanafi_asaba_children": "📖 Hanafi Asaba (residue) rule: Sons and daughters divide residue with son getting double daughter's share. (Mulla's, Sections 281-285)",
+    "hanafi_mflo_predeceased_son": "📜 Muslim Family Laws Ordinance 1961, Section 4: Predeceased son's children inherit his share. Source: pakistancode.gov.pk",
+
+    # Shia references
+    "shia_wife_no_land": "📖 Shia Jafari law: Wife does NOT inherit immovable property (land/buildings) – only movable assets. Source: Zafar & Associates practice guide.",
+    "shia_radd": "📖 Shia law applies Radd (return) – surplus estate returns to heirs proportionally. Source: Al-Syed Law resources.",
+
+    # Christian references
+    "christian_spouse_children": "📖 Succession Act 1925, Section 33(c): Spouse gets 1/3, children get 2/3 equally (no gender distinction). Source: pakistancode.gov.pk",
+    "christian_spouse_only": "📖 Succession Act 1925, Section 33(b): Spouse gets entire estate if no children.",
+    "christian_children_only": "📖 Succession Act 1925, Section 33(a): Children split entire estate equally.",
+
+    # Hindu references
+    "hindu_class_I": "📖 Hindu Succession Act 1956, Class I heirs (widow, sons, daughters) inherit equally. Source: pakistancode.gov.pk",
+
+    # General references
+    "debt_priority": "📜 Order of distribution: (1) Funeral expenses, (2) Debts, (3) Wasiyyat (max 1/3), (4) Faraid shares. Source: Islamic law & Succession Act 1925.",
+    "wasiyyat_limit": "📜 Islamic law: Will (Wasiyyat) cannot exceed 1/3 of estate after debts. Excess is void. Source: Quran 4:11-12 & Mulla's Section 118.",
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECTION 7 — LEGAL DOCUMENT TEMPLATES
 # Source: Standard Pakistani legal notice formats + Gemini-generated, reviewed by
