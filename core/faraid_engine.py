@@ -1154,3 +1154,20 @@ def calculate_shares(
         return calculate_hindu(heirs, total_estate, debts, funeral)
     else:
         return {"error": f"Unknown sect: {sect}", "shares": {}}
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
