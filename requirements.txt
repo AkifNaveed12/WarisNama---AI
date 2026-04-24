@@ -4,3 +4,4 @@ reportlab
 plotly
 python-dotenv
 pydantic
+groq
