@@ -23,3 +23,4 @@ venv/
 __pycache__/
 *.pdf
 _temp_output.pdf
+test_*.pdf

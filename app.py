@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+this is the app.py main file!
 WarisNama AI – Main Streamlit Application
 - Two modes: Inheritance Calculator (form/NLP) and AI Chatbot (Groq)
 - All original features (shares, tax, disputes, documents, exports) preserved
@@ -11,6 +12,8 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import io
+import re
+import tempfile
 
 from core.faraid_engine import calculate_shares
 from core.dispute_detector import detect_inheritance_disputes
@@ -93,7 +96,14 @@ if app_mode != st.session_state.app_mode:
 # MODE 1: INHERITANCE CALCULATOR (original functionality)
 # ======================================================================
 if st.session_state.app_mode == "📊 Inheritance Calculator":
-    input_method = st.sidebar.radio("Input method", ["Form", "Natural Language (Urdu/English)"])
+    input_method = st.sidebar.radio("Input method", ["Form", "Natural Language (Urdu/English)","Voice Input"])
+    # Track input source cleanly
+    if input_method == "Form":
+        st.session_state["input_source"] = "form"
+    elif input_method == "Natural Language (Urdu/English)":
+        st.session_state["input_source"] = "nlp"
+    elif input_method == "Voice Input":
+        st.session_state["input_source"] = "voice"
 
     # ---------- NATURAL LANGUAGE MODE ----------
     if input_method == "Natural Language (Urdu/English)":
@@ -104,18 +114,92 @@ if st.session_state.app_mode == "📊 Inheritance Calculator":
         if st.sidebar.button("Parse Scenario"):
             with st.spinner("Analyzing..."):
                 try:
+                    user_text = user_input.lower()
+
+                    missing = []
+
+                    # Check estate presence in USER TEXT (not parser)
+                    # if not any(word in user_text for word in ["lakh", "lac", "million", "crore", "rs", "pkr"]):
+                    #     missing.append("💰 Estate value")
+                    
+                    
+                    # Detect numeric + value pattern (STRICT)
+                    estate_pattern = re.search(r'\d+\s*(lakh|lac|million|crore|rs|pkr)', user_text)
+
+                    if not estate_pattern:
+                        missing.append("💰 Estate value")
+
+                    # Check sect in USER TEXT
+                    if not any(word in user_text for word in ["hanafi", "shia", "sunni", "christian", "hindu"]):
+                        missing.append("🕌 Sect")
+
+                    # Check heirs (basic safety)
+                    if not any(word in user_text for word in ["son", "sons", "daughter", "daughters", "wife", "husband"]):
+                        missing.append("👨‍👩‍👧‍👦 Heirs")
+
+                    if missing:
+                        st.error(f"❌ Missing: {', '.join(missing)}")
+                        st.stop()
+                    
                     parsed_result = parse_scenario(user_input)
-                    normalized = parsed_result.get('normalized', parsed_result)
+                    st.session_state['nlp_full'] = parsed_result
+
+                    normalized = parsed_result.get('normalized', {})
                     heirs = normalized.get('heirs', {})
-                    st.session_state['parsed_sons'] = heirs.get('sons', 2)
-                    st.session_state['parsed_daughters'] = heirs.get('daughters', 3)
-                    st.session_state['parsed_wives'] = heirs.get('wife', 1)
+
+
+                    # ✅ Populate session ONLY after validation
+                    st.session_state['parsed_sons'] = heirs.get('sons', 0)
+                    st.session_state['parsed_daughters'] = heirs.get('daughters', 0)
+                    st.session_state['parsed_wives'] = heirs.get('wife', 0)
                     st.session_state['parsed_husband'] = heirs.get('husband', 0)
                     st.session_state['parsed_mother'] = heirs.get('mother', 0)
                     st.session_state['parsed_father'] = heirs.get('father', 0)
-                    st.session_state['parsed_total_estate'] = normalized.get('total_estate', 10_000_000)
+                    
+                    # =====================================================
+                    # 🧠 MULTI-ASSET FIX (ADD HERE) 
+                    # =====================================================
+                    values = re.findall(r'(\d+)\s*(lakh|lac|million|crore)', user_text)
+                    multipliers = re.findall(r'(\d+)\s*(car|cars|plot|plots|house|houses)', user_text)
+
+                    total = 0
+
+                    for num, unit in values:
+                        num = int(num)
+
+                        if unit in ["lakh", "lac"]:
+                            val = num * 100000
+                        elif unit == "million":
+                            val = num * 1000000
+                        elif unit == "crore":
+                            val = num * 10000000
+                        else:
+                            val = num
+
+                        total += val
+
+                        # Handle "each"
+                        if "each" in user_text and multipliers and values:
+                            count = int(multipliers[0][0])
+                            last_value = total // len(values)
+                            total = total - last_value + (last_value * count)
+
+                        # Override parser ONLY if detected
+                        if total > 0:
+                            normalized['total_estate'] = total
+                    
+
+                        #st.session_state['parsed_total_estate'] = normalized.get('total_estate')
+                        #-------------updated for property validation ----------------
+                        parsed_estate = normalized.get('total_estate')
+                    if not parsed_estate:
+                        st.error("❌ Failed to extract estate value correctly.")
+                        st.stop()
+
+                    st.session_state['parsed_total_estate'] = parsed_estate
                     st.session_state['parsed_debts'] = normalized.get('debts', 0)
-                    st.session_state['parsed_sect'] = normalized.get('sect', 'hanafi')
+                    st.session_state['parsed_sect'] = normalized.get('sect')
+
                     dispute_flags = normalized.get('dispute_flags', {})
                     st.session_state['parsed_mutation'] = dispute_flags.get('mutation_done_by_one_heir', False)
                     st.session_state['parsed_no_cert'] = not dispute_flags.get('has_succession_certificate', True)
@@ -127,7 +211,9 @@ if st.session_state.app_mode == "📊 Inheritance Calculator":
                     st.session_state['parsed_debts_not_paid'] = (
                         dispute_flags.get('debts_present', False) and not dispute_flags.get('debts_paid', True)
                     )
+
                     st.success("✅ Parsed successfully!")
+
                     with st.expander("📋 Parsed Data Summary"):
                         st.json({k: v for k, v in st.session_state.items() if k.startswith('parsed_')})
                 except Exception as e:
@@ -169,7 +255,73 @@ if st.session_state.app_mode == "📊 Inheritance Calculator":
             will_exceeds = st.checkbox("Will exceeds 1/3 of estate?", value=st.session_state.parsed_will_exceeds)
             debts_not_paid = st.checkbox("Estate distributed before paying debts?", value=st.session_state.parsed_debts_not_paid)
             submitted = st.form_submit_button("🔍 Calculate Shares & Taxes")
+    
+    # ---------- VOICE MODE ----------
+    elif input_method == "Voice Input":
+        st.sidebar.subheader("🎤 Voice Input")
 
+        audio_file = st.sidebar.file_uploader(
+            "Upload voice (wav/mp3)",
+            type=["wav", "mp3"]
+        )
+        if audio_file and audio_file.type == "audio/mpeg":
+            st.sidebar.warning("⚠️ MP3 may not be fully supported. Prefer WAV format.")
+
+        if audio_file:
+            st.sidebar.success("Audio uploaded!")
+
+            with st.spinner("Transcribing..."):
+                try:
+                    from ai.nlp_parser import transcribe_audio  # your whisper func
+                    text = transcribe_audio(audio_file)
+                    # ✅ FIX 1: Convert UploadedFile → bytes
+                    audio_bytes = audio_file.read()
+                    transcription = transcribe_audio(audio_bytes)
+                    
+                    
+                    if isinstance(transcription, dict):
+                        if transcription.get("error"):
+                            st.error(f"❌ Transcription failed: {transcription['error']}")
+                            st.stop()
+                        text = transcription.get("text", "")
+                    else:
+                        text = transcription
+                    # 🚫 Empty speech guard
+                    if not text.strip():
+                        st.error("❌ Could not extract speech from audio.")
+                        st.stop()
+                    
+                    st.sidebar.text_area("Transcribed Text", text, height=120)
+
+                    if st.sidebar.button("Parse Voice Scenario"):
+                        submitted = True
+                        parsed_result = parse_scenario(text)
+
+                        # ✅ IMPORTANT
+                        st.session_state['nlp_full'] = parsed_result
+                        normalized = parsed_result.get('normalized', {})
+                        heirs = normalized.get('heirs', {})
+                        
+                        # ✅ STRICT VALIDATION
+                        if not normalized.get("total_estate") or not normalized.get("sect"):
+                            st.error("❌ Voice input incomplete. Please mention estate and sect.")
+                            st.stop()
+
+                        st.session_state['parsed_sons'] = heirs.get('sons', 0)
+                        st.session_state['parsed_daughters'] = heirs.get('daughters', 0)
+                        st.session_state['parsed_wives'] = heirs.get('wife', 0)
+                        st.session_state['parsed_husband'] = heirs.get('husband', 0)
+                        st.session_state['parsed_mother'] = heirs.get('mother', 0)
+                        st.session_state['parsed_father'] = heirs.get('father', 0)
+
+                        st.session_state['parsed_total_estate'] = normalized.get('total_estate')
+                        st.session_state['parsed_debts'] = normalized.get('debts', 0)
+                        st.session_state['parsed_sect'] = normalized.get('sect')
+
+                        st.success("✅ Voice parsed successfully!")
+
+                except Exception as e:
+                    st.error(f"Voice processing failed: {e}")
     # ---------- FORM MODE (MANUAL) ----------
     else:
         with st.sidebar.form("manual_form"):
@@ -206,18 +358,89 @@ if st.session_state.app_mode == "📊 Inheritance Calculator":
             debts_not_paid = st.checkbox("Estate distributed before paying debts?")
             submitted = st.form_submit_button("🔍 Calculate Shares & Taxes")
 
-    # ---------- COMMON CALCULATION LOGIC ----------
+    #----------------------------------------new version-----------------------------------
+    submitted = False
     if submitted:
-        # Build heirs dict
-        if sect in ["hanafi","shia"]:
-            heirs = {'sons': sons, 'daughters': daughters, 'wife': wives,
-                     'husband': husband, 'mother': mother, 'father': father}
-        elif sect == "christian":
-            heirs = {'spouse': spouse_christian, 'children': children_christian}
-        else:  # hindu
-            heirs = {'widow': wives, 'sons': sons, 'daughters': daughters}
+        # 🔹 Determine input source
+        source = st.session_state.get("input_source", "form")
 
-        result = calculate_shares(sect, heirs, total_estate, debts=debts, funeral=funeral, wasiyyat=wasiyyat)
+    # =========================================================
+    # ✅ SOURCE: NLP / VOICE (STRICT MODE)
+    # =========================================================
+        if source in ["nlp", "voice"]:
+
+            sect = st.session_state.get("parsed_sect")
+            total_estate = st.session_state.get("parsed_total_estate")
+            debts = st.session_state.get("parsed_debts", 0)
+            funeral = 0
+            wasiyyat = 0
+
+            sons = st.session_state.get("parsed_sons", 0)
+            daughters = st.session_state.get("parsed_daughters", 0)
+            wives = st.session_state.get("parsed_wives", 0)
+            husband = st.session_state.get("parsed_husband", 0)
+            mother = st.session_state.get("parsed_mother", 0)
+            father = st.session_state.get("parsed_father", 0)
+
+            mutation_single = st.session_state.get("parsed_mutation", False)
+            no_succession = st.session_state.get("parsed_no_cert", False)
+            minor = st.session_state.get("parsed_minor", False)
+            forced_sale = st.session_state.get("parsed_forced_sale", False)
+            hiba = st.session_state.get("parsed_hiba", False)
+            donor_possession = st.session_state.get("parsed_donor_possession", False)
+            will_exceeds = st.session_state.get("parsed_will_exceeds", False)
+            debts_not_paid = st.session_state.get("parsed_debts_not_paid", False)
+
+        # 🚫 STRICT VALIDATION
+            if not sect or not total_estate:
+                st.error("❌ Missing required NLP/Voice data. Please re-parse scenario.")
+                st.stop()
+
+    # =========================================================
+    # ✅ SOURCE: FORM (UNCHANGED BEHAVIOR)
+    # =========================================================
+        else:
+        # (use values already coming from form inputs)
+            pass
+
+    # =========================================================
+    # 🧠 BUILD HEIRS STRUCTURE (COMMON)
+    # =========================================================
+        if sect in ["hanafi", "shia"]:
+            heirs = {
+                'sons': sons,
+                'daughters': daughters,
+                'wife': wives,
+                'husband': husband,
+                'mother': mother,
+                'father': father
+            }
+
+        elif sect == "christian":
+            heirs = {
+                'spouse': spouse_christian,
+                'children': children_christian
+            }
+
+        else:  # hindu
+            heirs = {
+                'widow': wives,
+                'sons': sons,
+                'daughters': daughters
+            }
+
+    # =========================================================
+    # 🧮 CALCULATE SHARES
+    # =========================================================
+        result = calculate_shares(
+            sect,
+            heirs,
+            total_estate,
+            debts=debts,
+            funeral=funeral,
+            wasiyyat=wasiyyat
+        )
+
         if "error" in result:
             st.error(result["error"])
             st.stop()
@@ -225,33 +448,62 @@ if st.session_state.app_mode == "📊 Inheritance Calculator":
         shares = result.get("shares", result)
         distributable = result.get("distributable_estate", total_estate - debts - funeral)
 
-        # Dispute detection
+    # =========================================================
+    # 🚨 DISPUTE DETECTION
+    # =========================================================
         dispute_data = {
-            'mutation_by_single_heir': mutation_single, 'no_succession_certificate': no_succession,
-            'one_heir_wants_sell': forced_sale, 'others_refuse': forced_sale, 'gift_deed_mentioned': hiba,
-            'donor_still_in_possession': donor_possession, 'will_mentioned': will_exceeds,
-            'will_percentage': 50 if will_exceeds else 0, 'debts_mentioned': debts > 0,
-            'estate_distributed_before_debt': debts_not_paid, 'heir_age_under_18': minor,
+            'mutation_by_single_heir': mutation_single,
+            'no_succession_certificate': no_succession,
+            'one_heir_wants_sell': forced_sale,
+            'others_refuse': forced_sale,
+            'gift_deed_mentioned': hiba,
+            'donor_still_in_possession': donor_possession,
+            'will_mentioned': will_exceeds,
+            'will_percentage': 50 if will_exceeds else 0,
+            'debts_mentioned': debts > 0,
+            'estate_distributed_before_debt': debts_not_paid,
+            'heir_age_under_18': minor,
             'legal_guardian_appointed': False
         }
+
         disputes = detect_inheritance_disputes(dispute_data)
 
-        # Tax
-        filer_map = {h: FilerStatus.FILER if 'son' in h else FilerStatus.NON_FILER for h in shares}
+    # =========================================================
+    # 💰 TAX CALCULATION
+    # =========================================================
+        filer_map = {
+            h: FilerStatus.FILER if 'son' in h else FilerStatus.NON_FILER
+            for h in shares
+        }
+
         tax_results = calculate_all_heirs_tax(
-            heirs_shares=shares, filer_status_map=filer_map,
-            full_property_value_pkr=total_estate, action="sell", province=Province.DEFAULT
+            heirs_shares=shares,
+            filer_status_map=filer_map,
+            full_property_value_pkr=total_estate,
+            action="sell",
+            province=Province.DEFAULT
         )
 
-        # Store in session state for display
+    # =========================================================
+    # 💾 STORE RESULTS
+    # =========================================================
         st.session_state.results = {
-            "shares": shares, "disputes": disputes, "tax_results": tax_results,
-            "total_estate": total_estate, "distributable": distributable,
-            "debts": debts, "funeral": funeral, "wasiyyat": wasiyyat,
-            "sect": sect, "minor": minor, "full_value": total_estate
+            "shares": shares,
+            "disputes": disputes,
+            "tax_results": tax_results,
+            "total_estate": total_estate,
+            "distributable": distributable,
+            "debts": debts,
+            "funeral": funeral,
+            "wasiyyat": wasiyyat,
+            "sect": sect,
+            "minor": minor,
+            "full_value": total_estate
         }
+
         st.session_state.results_ready = True
-        # Stay in calculator mode (already there)
+
+    # 🔁 Refresh UI
         st.rerun()
 
     # ---------- DISPLAY RESULTS (if present) ----------
@@ -375,23 +627,57 @@ if st.session_state.app_mode == "📊 Inheritance Calculator":
                     st.download_button("📑 Share Certificate", buf.getvalue(), "share_certificate.pdf", "application/pdf")
             with col_d2:
                 if disputes.get('total_patterns_detected',0) > 0:
+                    nlp_data = st.session_state.get("nlp_full", {})
+                    raw = nlp_data.get("raw", {})
+                    
                     notice = get_legal_notice_data()
                     top = disputes.get('disputes',[{}])[0]
+                    # notice.update({
+                    #     "noticee_name": "Opposing Heir", "client_name": "User",
+                    #     "grievance_paras": [f"Opposing heir committed {top.get('pattern','fraud')}."],
+                    #     "relief_demanded": [top.get('remedy','Legal action')]
+                    # })
+                    # new updated version with more details from NLP
                     notice.update({
-                        "noticee_name": "Opposing Heir", "client_name": "User",
-                        "grievance_paras": [f"Opposing heir committed {top.get('pattern','fraud')}."],
-                        "relief_demanded": [top.get('remedy','Legal action')]
+                        "client_name": "User",
+
+                        # ✅ Prefer NLP name, fallback to dispute/default
+                        "noticee_name": raw.get("accused_name") or "Opposing Heir",
+
+                        # ✅ Combine NLP + dispute insight
+                        "grievance_paras": [
+                        raw.get("description") or f"Opposing heir committed {top.get('pattern','fraud')}."
+                        ],
+
+                        # ✅ Keep dispute engine strength
+                        "relief_demanded": [
+                            top.get('remedy', 'Legal action')
+                        ]
                     })
                     buf = io.BytesIO()
                     generate_legal_notice_pdf(notice, buffer=buf)
                     st.download_button("⚖️ Legal Notice", buf.getvalue(), "legal_notice.pdf", "application/pdf")
             with col_d3:
                 if disputes.get('total_patterns_detected',0) > 0:
+                    nlp_data = st.session_state.get("nlp_full", {})
+                    raw = nlp_data.get("raw", {})
+                    
+                    
+                    # new updated version with more details from NLP
                     fir = get_fir_data()
+
+                    top = disputes.get('disputes', [{}])[0]
+
                     fir.update({
-                        "accused_name": "Opposing Heir",
-                        "fir_narrative": "Illegal mutation without succession certificate.",
-                        "offence_sections": "PPC 498A"
+                        # ✅ Prefer NLP name
+                        "accused_name": raw.get("accused_name") or "Opposing Heir",
+
+                        # ✅ Combine NLP + dispute logic
+                        "fir_narrative": raw.get("description") or \
+                            f"Illegal act detected: {top.get('pattern','fraud')}.",
+
+                        # ✅ Keep legal strength from dispute engine (fallback)
+                        "offence_sections": top.get("law_sections", "420, 468 PPC")
                     })
                     buf = io.BytesIO()
                     generate_fir_pdf(fir, buffer=buf)
