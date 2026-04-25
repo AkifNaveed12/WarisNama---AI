@@ -10,3 +10,86 @@ gtts>=2.5.0
 python-dotenv>=1.0.0
 streamlit>=1.35.0
 groq
+fastapi==0.115.11
+uvicorn==0.34.0
+pydantic==2.10.6
+python-dotenv==1.0.1
+pytest==8.3.4
+httpx==0.28.1
+python-multipart==0.0.20
+reportlab==4.2.5
+plotly==5.24.1
+pandas==2.2.3
+
+
+# UI
+streamlit>=1.35.0
+
+# AI / NLP
+google-generativeai>=0.7.0
+
+# PDF Generation
+reportlab
+
+# Data & Charts
+plotly
+pandas
+
+# Backend / Validation
+python-dotenv>=1.0.0
+pydantic>=1.10.0
+
+# Voice (TTS + STT)
+openai>=1.30.0
+gtts>=2.5.0
+groq
+openai-whisper
+
+# Backend / Validation
+python-dotenv>=1.0.0
+
+npm
+ pydantic[email]
+
+
+ # =====================================================
+# Python Backend Dependencies (FastAPI + AI + PDF)
+# =====================================================
+
+# Web framework & server
+fastapi==0.115.11
+uvicorn==0.34.0
+python-multipart==0.0.20
+
+# Validation & environment
+pydantic[email]==2.10.6
+python-dotenv==1.0.1
+
+# PDF generation
+reportlab==4.2.5
+
+# AI / NLP / Voice
+google-generativeai>=0.7.0
+groq>=1.2.0
+openai>=1.30.0
+gtts>=2.5.0
+openai-whisper>=20231117
+
+# Data & plotting
+pandas==2.2.3
+plotly==5.24.1
+
+# Testing & HTTP
+pytest==8.3.4
+httpx==0.28.1
+
+# Streamlit (optional – keep if you still use it)
+streamlit>=1.35.0
+
+# =====================================================
+# Frontend (React) dependencies – not installed via pip
+# Use npm install inside the frontend/ folder.
+# =====================================================
+# See frontend/package.json for the full list.
+# Main packages: react, react-dom, react-router-dom, zustand,
+# react-hook-form, react-hot-toast, recharts, react-csv, prop-types, axios.
