@@ -59,3 +59,5 @@ const ChatWindow = ({ messages, loading, onSendMessage }) => {
 }
 
 export default ChatWindow
+
+
